@@ -1,6 +1,8 @@
 package com.nowcoder.community;
 
+import com.nowcoder.community.dao.DiscussPostMapper;
 import com.nowcoder.community.dao.UserMapper;
+import com.nowcoder.community.entity.DiscussPost;
 import com.nowcoder.community.entity.User;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -10,6 +12,7 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.Date;
+import java.util.List;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
@@ -18,6 +21,9 @@ public class MapperTests {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private DiscussPostMapper discussPostMapper;
 
     @Test
     public void testSelectUser(){
@@ -51,5 +57,16 @@ public class MapperTests {
 
     }
 
+
+    @Test
+    public void testSelectPosts(){
+        List<DiscussPost> discussPosts = discussPostMapper.selectDiscussPosts(0, 0, 10);
+        discussPosts.stream()
+                        .forEach(s-> System.out.println(s));
+
+        Integer rows = discussPostMapper.selectDiscussPostRows(0);
+        System.out.println(rows);
+
+    }
 
 }
