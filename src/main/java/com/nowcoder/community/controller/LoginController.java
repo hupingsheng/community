@@ -144,6 +144,7 @@ public class LoginController implements CommunityConstant {
             cookie.setPath(contextPath);
             cookie.setMaxAge(expiredSeconds);
             response.addCookie(cookie);
+            //重定向渲染页面
             return "redirect:/index";
         }else {
             model.addAttribute("usernameMsg",map.get("usernameMsg"));
@@ -161,6 +162,7 @@ public class LoginController implements CommunityConstant {
     @RequestMapping(path = "/logout", method = RequestMethod.GET)
     public String logout(@CookieValue("ticket") String ticket) {
         userService.logout(ticket);
+        //重定向渲染页面
         return "redirect:/login";
     }
 }
