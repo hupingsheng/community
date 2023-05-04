@@ -5,11 +5,11 @@ import org.apache.ibatis.annotations.*;
 
 /**
  * (LoginTicket)表数据库访问层
- *
  * @author makejava
  * @since 2023-05-01 18:23:14
  */
 @Mapper
+@Deprecated
 public interface LoginTicketMapper {
 
     @Insert({

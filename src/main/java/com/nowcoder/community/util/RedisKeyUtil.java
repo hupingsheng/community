@@ -14,6 +14,8 @@ public class RedisKeyUtil {
 
     private static final String PREFIX_KAPTCHA = "kaptcha";
 
+    private static final String PREFIX_TICKET = "ticket";
+
     //在redis中表示某个实体的赞
     //like:entity:entity_type:entity_id -> set(userId)
     public static String getEntityLikeKey(Integer entityType, Integer entityId){
@@ -40,5 +42,10 @@ public class RedisKeyUtil {
     //登录验证码
     public static String getKaptchaKey(String owner){
         return PREFIX_KAPTCHA + SPLIT + owner;
+    }
+
+    //登录凭证
+    public static String getTicketKey(String ticket){
+        return PREFIX_TICKET + SPLIT + ticket;
     }
 }
