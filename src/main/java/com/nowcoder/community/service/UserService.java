@@ -1,6 +1,5 @@
 package com.nowcoder.community.service;
 
-import com.nowcoder.community.dao.LoginTicketMapper;
 import com.nowcoder.community.dao.UserMapper;
 import com.nowcoder.community.entity.LoginTicket;
 import com.nowcoder.community.entity.User;
@@ -20,6 +19,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class UserService implements CommunityConstant {
@@ -46,7 +46,12 @@ public class UserService implements CommunityConstant {
     private String contextPath;
 
     public User findUserById(Integer id) {
-        return userMapper.selectById(id);
+//        return userMapper.selectById(id);
+        User user = getCache(id);
+        if(user == null){
+            user = initCache(id);
+        }
+        return user;
     }
 
     public Map<String, Object> register(User user) {
@@ -114,6 +119,7 @@ public class UserService implements CommunityConstant {
             return ACTIVATION_REPEATE;
         } else if (user.getActivationCode().equals(code)) {
             userMapper.updateStatus(userId, 1);
+            clearCache(userId);
             return ACTIVATION_SUCCESS;
         } else {
             return ACTIVATION_FAILURE;
@@ -186,6 +192,34 @@ public class UserService implements CommunityConstant {
     }
 
     public Integer updateHeader(Integer userId, String headerUrl){
-        return userMapper.updateHeader(userId, headerUrl);
+        //访问redis和mysql无法放在一个事务中
+        int rows = userMapper.updateHeader(userId,headerUrl);
+        clearCache(userId);
+        return rows;
     }
+
+//  将user数据表作为一个缓存放在redis中，优先从redis中查询
+    //当数据库发生变化时，缓存要不删了，要不更新
+    //1. 优先从缓存中取值
+    public User getCache(Integer userId){
+        String redisKey = RedisKeyUtil.getUserKey(userId);
+        return (User) redisTemplate.opsForValue().get(redisKey);
+    }
+
+    //2.取不到时初始化缓存数据
+    public User initCache(Integer userId){
+        User user = userMapper.selectById(userId);
+        String redisKey = RedisKeyUtil.getUserKey(userId);
+        redisTemplate.opsForValue().set(redisKey, user, 3600, TimeUnit.SECONDS);
+        return user;
+    }
+    
+    //3. 数据变更时清除缓存数据
+    public void clearCache(Integer userId){
+        String redisKey = RedisKeyUtil.getUserKey(userId);
+        redisTemplate.delete(redisKey);
+
+    }
+
+
 }

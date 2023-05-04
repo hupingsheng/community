@@ -35,6 +35,7 @@ public class LoginTicketInterceptor implements HandlerInterceptor {
             if(loginTicket != null && loginTicket.getStatus() == 0 && loginTicket.getExpired().after(new Date())){
                 //根据凭证查询用户
                 User user = userService.findUserById(loginTicket.getUserId());
+
                 //在本次请求持有用户
                 //每个浏览器访问服务器时，服务器会创建一个独立的线程，来处理请求
                 //因此存用户时，要考虑到多线程，ThreadLocal
