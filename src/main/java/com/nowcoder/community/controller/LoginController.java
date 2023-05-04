@@ -4,11 +4,14 @@ import com.google.code.kaptcha.Producer;
 import com.nowcoder.community.entity.User;
 import com.nowcoder.community.service.UserService;
 import com.nowcoder.community.util.CommunityConstant;
+import com.nowcoder.community.util.CommunityUtil;
+import com.nowcoder.community.util.RedisKeyUtil;
 import com.sun.org.apache.xpath.internal.operations.Mod;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -18,12 +21,14 @@ import org.springframework.web.bind.annotation.RequestMethod;
 
 import javax.imageio.ImageIO;
 import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Controller
 @Slf4j
@@ -37,6 +42,11 @@ public class LoginController implements CommunityConstant {
 
     @Value("${server.servlet.context-path}")
     private String contextPath;
+
+
+    @Autowired
+    private RedisTemplate redisTemplate;
+
 
     /**
      * 输入register路径时，传给前端的注册页面
@@ -92,13 +102,28 @@ public class LoginController implements CommunityConstant {
      * 获取图形验证码
      */
     @RequestMapping(path = "/kaptcha", method = RequestMethod.GET)
-    public void getKaptcha(HttpServletResponse response, HttpSession session){
+    public void getKaptcha(HttpServletResponse response){
         //生成验证码
         String text = kaptchaProducer.createText();
         BufferedImage image = kaptchaProducer.createImage(text);
 
         //将验证码存入session
-        session.setAttribute("kaptcha",text);
+//        session.setAttribute("kaptcha",text);
+
+        //之前用session保存验证码，session会自动将sessionId存入cookie中发送给浏览器
+        //所以不用担心验证码的归属问题
+
+        //验证码的归属   生成一个随机字符串作为一个key，一方面作为redis的key,一方面作为cookie发送给浏览器，下次访问自动携带
+        String kaptchaOwner = CommunityUtil.generateUUID();
+        Cookie cookie = new Cookie("kaptchaOwner", kaptchaOwner);
+        cookie.setMaxAge(60);   //验证码有效时间60s
+        cookie.setPath(contextPath);
+        response.addCookie(cookie);
+        //验证码存入redis
+        String redisKey = RedisKeyUtil.getKaptchaKey(kaptchaOwner);
+        redisTemplate.opsForValue().set(redisKey, text, 60, TimeUnit.SECONDS);
+
+
 
         log.info("=============");
         System.out.println("==========");
@@ -114,21 +139,29 @@ public class LoginController implements CommunityConstant {
 
 
     /**
-     *
      * @param username
      * @param password
      * @param code
      * @param rememberMe
      * @param model
-     * @param session
      * @param response
      * @return
      */
     @RequestMapping(path = "/login", method = RequestMethod.POST)
     public String login(String username, String password, String code, boolean rememberMe,
-                        Model model, HttpSession session, HttpServletResponse response){
+                        Model model, HttpServletResponse response, @CookieValue("kaptchaOwner") String kaptchaOwner){
         //先验证验证码 忽略大小写
-        String kaptcha = (String) session.getAttribute("kaptcha");
+//        String kaptcha = (String) session.getAttribute("kaptcha");
+
+        //从cookie中获取kaptchaOwner,拼接成key
+        //从redis中根据key获取value
+        String kaptcha = null;
+        //cookie不为空
+        if(StringUtils.isNoneBlank(kaptchaOwner)){
+            String redisKey = RedisKeyUtil.getKaptchaKey(kaptchaOwner);
+            kaptcha = (String) redisTemplate.opsForValue().get(redisKey);
+        }
+
         if(StringUtils.isBlank(code) || StringUtils.isBlank(kaptcha) || !kaptcha.equalsIgnoreCase(code)){
             model.addAttribute("codeMsg","验证码错误");
             return "/site/login";
