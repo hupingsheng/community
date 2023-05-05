@@ -198,6 +198,10 @@ public class UserService implements CommunityConstant {
         return rows;
     }
 
+    public User findUserByName(String username) {
+        return userMapper.selectByName(username);
+    }
+
 //  将user数据表作为一个缓存放在redis中，优先从redis中查询
     //当数据库发生变化时，缓存要不删了，要不更新
     //1. 优先从缓存中取值
