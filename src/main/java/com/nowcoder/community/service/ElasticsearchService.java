@@ -1,6 +1,5 @@
 package com.nowcoder.community.service;
 
-
 import com.nowcoder.community.dao.elasticsearch.DiscussPostRepository;
 import com.nowcoder.community.entity.DiscussPost;
 import org.elasticsearch.action.search.SearchResponse;
@@ -28,60 +27,44 @@ import java.util.Date;
 import java.util.List;
 
 @Service
-public class ElasticSearchService {
+public class ElasticsearchService {
 
     @Autowired
-    private DiscussPostRepository discussPostRepository;
+    private DiscussPostRepository discussRepository;
 
     @Autowired
-    private ElasticsearchTemplate elasticsearchTemplate;
+    private ElasticsearchTemplate elasticTemplate;
 
-    /**
-     * 向ES服务器添加帖子
-     * @param post
-     */
-    public void saveDiscussPost(DiscussPost post){
-        discussPostRepository.save(post);
+    public void saveDiscussPost(DiscussPost post) {
+        discussRepository.save(post);
     }
 
-    /**
-     * 从Es服务器删除帖子
-      * @param id
-     */
-    public void delete(Integer id){
-        discussPostRepository.deleteById(id);
+    public void deleteDiscussPost(int id) {
+        discussRepository.deleteById(id);
     }
 
-    /**
-     *
-     * @param keyword
-     * @param current
-     * @param limit
-     * @return
-     */
-    public Page<DiscussPost> searchDiscussPost(String keyword, Integer current,Integer limit){
+    public Page<DiscussPost> searchDiscussPost(String keyword, int current, int limit) {
         SearchQuery searchQuery = new NativeSearchQueryBuilder()
-                .withQuery(QueryBuilders.multiMatchQuery(keyword,"title","content"))
+                .withQuery(QueryBuilders.multiMatchQuery(keyword, "title", "content"))
                 .withSort(SortBuilders.fieldSort("type").order(SortOrder.DESC))
                 .withSort(SortBuilders.fieldSort("score").order(SortOrder.DESC))
-                .withSort(SortBuilders.fieldSort("createTime").order(SortOrder.DESC))   //排序规则
-                .withPageable(PageRequest.of(current,limit))
+                .withSort(SortBuilders.fieldSort("createTime").order(SortOrder.DESC))
+                .withPageable(PageRequest.of(current, limit))
                 .withHighlightFields(
                         new HighlightBuilder.Field("title").preTags("<em>").postTags("</em>"),
                         new HighlightBuilder.Field("content").preTags("<em>").postTags("</em>")
                 ).build();
 
-        return elasticsearchTemplate.queryForPage(searchQuery, DiscussPost.class, new SearchResultMapper() {
+        return elasticTemplate.queryForPage(searchQuery, DiscussPost.class, new SearchResultMapper() {
             @Override
             public <T> AggregatedPage<T> mapResults(SearchResponse response, Class<T> aClass, Pageable pageable) {
-                //获取命中的数据
                 SearchHits hits = response.getHits();
-                if(hits.getTotalHits() <= 0){
+                if (hits.getTotalHits() <= 0) {
                     return null;
                 }
 
                 List<DiscussPost> list = new ArrayList<>();
-                for(SearchHit hit : hits){
+                for (SearchHit hit : hits) {
                     DiscussPost post = new DiscussPost();
 
                     String id = hit.getSourceAsMap().get("id").toString();
@@ -105,23 +88,22 @@ public class ElasticSearchService {
                     String commentCount = hit.getSourceAsMap().get("commentCount").toString();
                     post.setCommentCount(Integer.valueOf(commentCount));
 
-                    //处理高亮显示
+                    // 处理高亮显示的结果
                     HighlightField titleField = hit.getHighlightFields().get("title");
-                    if(titleField != null){
+                    if (titleField != null) {
                         post.setTitle(titleField.getFragments()[0].toString());
                     }
 
                     HighlightField contentField = hit.getHighlightFields().get("content");
-                    if(contentField != null){
-                        post.setTitle(contentField.getFragments()[0].toString());
+                    if (contentField != null) {
+                        post.setContent(contentField.getFragments()[0].toString());
                     }
 
                     list.add(post);
                 }
+
                 return new AggregatedPageImpl(list, pageable,
-                        hits.getTotalHits(),response.getAggregations(),
-                        response.getScrollId(),
-                        hits.getMaxScore());
+                        hits.getTotalHits(), response.getAggregations(), response.getScrollId(), hits.getMaxScore());
             }
         });
     }

@@ -5,7 +5,7 @@ import com.nowcoder.community.entity.DiscussPost;
 import com.nowcoder.community.entity.Event;
 import com.nowcoder.community.entity.Message;
 import com.nowcoder.community.service.DiscussPostService;
-import com.nowcoder.community.service.ElasticSearchService;
+import com.nowcoder.community.service.ElasticsearchService;
 import com.nowcoder.community.service.MessageService;
 import com.nowcoder.community.util.CommunityConstant;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -27,7 +27,7 @@ public class EventConsumer implements CommunityConstant {
     private DiscussPostService discussPostService;
 
     @Autowired
-    private ElasticSearchService elasticSearchService;
+    private ElasticsearchService elasticsearchService;
 
     /**
      * 消费三个主题的数据
@@ -79,7 +79,7 @@ public class EventConsumer implements CommunityConstant {
         }
 
         DiscussPost post = discussPostService.findDiscussPostById(event.getEntityId());
-        elasticSearchService.saveDiscussPost(post);
+        elasticsearchService.saveDiscussPost(post);
 
 
     }

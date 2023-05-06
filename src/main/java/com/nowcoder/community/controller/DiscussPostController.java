@@ -47,7 +47,6 @@ public class DiscussPostController implements CommunityConstant {
         User user = hostHolder.getUser();
         if (user == null) {
             return CommunityUtil.getJsonString(403, "你还没有登录哦!");
-
         }
 
         DiscussPost post = new DiscussPost();
@@ -55,6 +54,8 @@ public class DiscussPostController implements CommunityConstant {
         post.setTitle(title);
         post.setContent(content);
         post.setCreateTime(new Date());
+        post.setStatus(0);
+        post.setType(0);
         discussPostService.addDiscussPost(post);
 
         //触发发帖事件

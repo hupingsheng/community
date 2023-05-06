@@ -3,7 +3,7 @@ package com.nowcoder.community.controller;
 
 import com.nowcoder.community.entity.DiscussPost;
 import com.nowcoder.community.entity.Page;
-import com.nowcoder.community.service.ElasticSearchService;
+import com.nowcoder.community.service.ElasticsearchService;
 import com.nowcoder.community.service.LikeService;
 import com.nowcoder.community.service.UserService;
 import com.nowcoder.community.util.CommunityConstant;
@@ -24,7 +24,7 @@ import java.util.Map;
 public class SearchController implements CommunityConstant {
 
     @Autowired
-    private ElasticSearchService elasticSearchService;
+    private ElasticsearchService elasticsearchService;
 
     @Autowired
     private UserService userService;
@@ -38,7 +38,7 @@ public class SearchController implements CommunityConstant {
 
         //搜索帖子
         org.springframework.data.domain.Page<DiscussPost> searchResult =
-                elasticSearchService.searchDiscussPost(keyword, page.getCurrent() - 1, page.getLimit());
+                elasticsearchService.searchDiscussPost(keyword, page.getCurrent() - 1, page.getLimit());
 
         //聚合数据
         List<Map<String,Object>>  discussPosts = new ArrayList<>();
