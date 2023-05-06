@@ -1,9 +1,8 @@
-package com.nowcoder.community;
+package com.nowcoder.community.service;
 
-import com.nowcoder.community.dao.DiscussPostMapper;
+
 import com.nowcoder.community.dao.elasticsearch.DiscussPostRepository;
 import com.nowcoder.community.entity.DiscussPost;
-import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
@@ -12,10 +11,7 @@ import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightField;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
-import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -25,21 +21,14 @@ import org.springframework.data.elasticsearch.core.aggregation.AggregatedPage;
 import org.springframework.data.elasticsearch.core.aggregation.impl.AggregatedPageImpl;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
 import org.springframework.data.elasticsearch.core.query.SearchQuery;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-@RunWith(SpringRunner.class)
-@SpringBootTest
-@ContextConfiguration(classes = CommunityApplication.class)
-@Slf4j
-public class ElasticSearchTests {
-
-    @Autowired
-    private DiscussPostMapper discussPostMapper;
+@Service
+public class ElasticSearchService {
 
     @Autowired
     private DiscussPostRepository discussPostRepository;
@@ -47,67 +36,45 @@ public class ElasticSearchTests {
     @Autowired
     private ElasticsearchTemplate elasticsearchTemplate;
 
-    @Test
-    public void testInsert(){
-        discussPostRepository.save(discussPostMapper.selectDiscussPostById(241));
-        discussPostRepository.save(discussPostMapper.selectDiscussPostById(242));
-        discussPostRepository.save(discussPostMapper.selectDiscussPostById(243));
+    /**
+     * 向ES服务器添加帖子
+     * @param post
+     */
+    public void saveDiscussPost(DiscussPost post){
+        discussPostRepository.save(post);
     }
-
-    @Test
-    public void testInsertList(){
-        discussPostRepository.saveAll(discussPostMapper.selectDiscussPosts(101, 0,100));
-        discussPostRepository.saveAll(discussPostMapper.selectDiscussPosts(102, 0,100));
-        discussPostRepository.saveAll(discussPostMapper.selectDiscussPosts(103, 0,100));
-    }
-
-    //搜索
-    @Test
-    public void testSearchByRepository(){
-        SearchQuery searchQuery = new NativeSearchQueryBuilder()
-                .withQuery(QueryBuilders.multiMatchQuery("互联网寒冬","title","content"))
-                .withSort(SortBuilders.fieldSort("type").order(SortOrder.DESC))
-                .withSort(SortBuilders.fieldSort("score").order(SortOrder.DESC))
-                .withSort(SortBuilders.fieldSort("createTime").order(SortOrder.DESC))   //排序规则
-                .withPageable(PageRequest.of(0,10))
-                .withHighlightFields(
-                        new HighlightBuilder.Field("title").preTags("<em>").postTags("</em>"),
-                        new HighlightBuilder.Field("content").preTags("<em>").postTags("</em>")
-                ).build();
-
-        //elasticTemplate.queryForPage
-
-        //从ES服务器搜索
-        Page<DiscussPost> page = discussPostRepository.search(searchQuery);
-        System.out.println(page.getTotalElements());
-        System.out.println(page.getTotalPages());
-        System.out.println(page.getNumber());
-        System.out.println(page.getSize());
-        for(DiscussPost post : page){
-            System.out.println(post);
-        }
-    }
-
 
     /**
-     * ES搜索，并将搜索词高亮显示
+     * 从Es服务器删除帖子
+      * @param id
      */
-    @Test
-    public void testSearchTemplate(){
+    public void delete(Integer id){
+        discussPostRepository.deleteById(id);
+    }
+
+    /**
+     *
+     * @param keyword
+     * @param current
+     * @param limit
+     * @return
+     */
+    public Page<DiscussPost> searchDiscussPost(String keyword, Integer current,Integer limit){
         SearchQuery searchQuery = new NativeSearchQueryBuilder()
-                .withQuery(QueryBuilders.multiMatchQuery("互联网寒冬","title","content"))
+                .withQuery(QueryBuilders.multiMatchQuery(keyword,"title","content"))
                 .withSort(SortBuilders.fieldSort("type").order(SortOrder.DESC))
                 .withSort(SortBuilders.fieldSort("score").order(SortOrder.DESC))
                 .withSort(SortBuilders.fieldSort("createTime").order(SortOrder.DESC))   //排序规则
-                .withPageable(PageRequest.of(0,10))
+                .withPageable(PageRequest.of(current,limit))
                 .withHighlightFields(
                         new HighlightBuilder.Field("title").preTags("<em>").postTags("</em>"),
                         new HighlightBuilder.Field("content").preTags("<em>").postTags("</em>")
                 ).build();
 
-        Page<DiscussPost> page = elasticsearchTemplate.queryForPage(searchQuery, DiscussPost.class, new SearchResultMapper() {
+        return elasticsearchTemplate.queryForPage(searchQuery, DiscussPost.class, new SearchResultMapper() {
             @Override
             public <T> AggregatedPage<T> mapResults(SearchResponse response, Class<T> aClass, Pageable pageable) {
+                //获取命中的数据
                 SearchHits hits = response.getHits();
                 if(hits.getTotalHits() <= 0){
                     return null;
@@ -157,13 +124,6 @@ public class ElasticSearchTests {
                         hits.getMaxScore());
             }
         });
-
-        System.out.println(page.getTotalElements());
-        System.out.println(page.getTotalPages());
-        System.out.println(page.getNumber());
-        System.out.println(page.getSize());
-        for(DiscussPost post : page){
-            System.out.println(post);
-        }
     }
+
 }

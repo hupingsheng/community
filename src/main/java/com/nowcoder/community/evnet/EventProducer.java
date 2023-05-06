@@ -1,6 +1,5 @@
 package com.nowcoder.community.evnet;
 
-
 import com.alibaba.fastjson2.JSONObject;
 import com.nowcoder.community.entity.Event;
 import org.springframework.beans.factory.annotation.Autowired;
